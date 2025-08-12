@@ -38,7 +38,7 @@ class Config:
         )
         
         if is_streamlit_cloud:
-            self.REDIRECT_URI = 'https://ksc-khec.streamlit.app/'
+            self.REDIRECT_URI = 'https://ksc-khec.streamlit.app'
         else:
             self.REDIRECT_URI = 'http://localhost:8501/'
         
