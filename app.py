@@ -21,10 +21,25 @@ class Config:
             st.stop()
         
         # Determine redirect URI based on environment
-        if 'streamlit.app' in os.getenv('STREAMLIT_SHARING_URL', ''):
-            self.REDIRECT_URI = 'https://ksc-khec.streamlit.app/'
-        else:
-            self.REDIRECT_URI = 'http://localhost:8501/'
+        # Try to get from Streamlit's internal config first
+        try:
+            import streamlit.web.server.server as server
+            if hasattr(server.Server, 'get_current'):
+                current_server = server.Server.get_current()
+                if current_server and hasattr(current_server, '_config'):
+                    base_url = current_server._config.get_option('server.baseUrlPath')
+            
+            # Check if we're on Streamlit Cloud
+            if 'STREAMLIT_SERVER_PORT' in os.environ or 'streamlit.app' in str(os.environ.get('STREAMLIT_SHARING_URL', '')):
+                self.REDIRECT_URI = 'https://ksc-khec.streamlit.app/'
+            else:
+                self.REDIRECT_URI = 'http://localhost:8501/'
+        except:
+            # Fallback detection
+            if any(key in os.environ for key in ['STREAMLIT_SERVER_PORT', 'STREAMLIT_SHARING_URL']):
+                self.REDIRECT_URI = 'https://ksc-khec.streamlit.app/'
+            else:
+                self.REDIRECT_URI = 'http://localhost:8501/'
         
         self.SCOPES = ['openid', 'email', 'profile']
         self.GOOGLE_AUTH_URL = 'https://accounts.google.com/o/oauth2/v2/auth'
@@ -300,13 +315,21 @@ def show_login_page():
     
     # Technical details
     with st.expander("🔧 Technical Details"):
+        current_url = st.query_params.get('url', 'Not available')
         st.write(f"""
         - **OAuth 2.0 Flow**: Authorization Code Grant
         - **Scopes**: `{', '.join(config.SCOPES)}`
         - **Redirect URI**: `{config.REDIRECT_URI}`
         - **Client ID**: `{config.CLIENT_ID[:20]}...`
-        - **Environment**: `{'Development' if 'localhost' in config.REDIRECT_URI else 'Production'}`
+        - **Environment**: `{'Production' if 'localhost' not in config.REDIRECT_URI else 'Development'}`
+        - **Current URL**: `{st.query_params}`
+        - **Environment Variables**: `{[k for k in os.environ.keys() if 'STREAMLIT' in k]}`
         """)
+        
+        # Show auth URL for debugging
+        if st.checkbox("Show Auth URL"):
+            auth_url = get_google_auth_url()
+            st.code(auth_url)
 
 def main():
     st.set_page_config(
