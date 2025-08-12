@@ -253,7 +253,8 @@ def handle_auth_callback():
 
 def show_login_page():
     """Display the login page"""
-    #print secrets to test 
+    #print redirect url to test
+    st.info("Redirect URL:", st.secrets["redirect_uris"][0])
     st.info(st.secrets)
     st.info("👋 Please sign in with your Google account to continue.")
     
