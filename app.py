@@ -253,6 +253,8 @@ def handle_auth_callback():
 
 def show_login_page():
     """Display the login page"""
+    #print secrets to test 
+    st.info(st.secrets)
     st.info("👋 Please sign in with your Google account to continue.")
     
     col1, col2, col3 = st.columns([1, 2, 1])
