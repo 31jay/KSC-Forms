@@ -260,7 +260,7 @@ def show_login_page():
     st.info(f"🔍 Debug - User: {os.getenv('USER', 'Not found')}")
     st.info(f"🔍 Debug - Home: {os.getenv('HOME', 'Not found')}")
     st.info(f"🔍 Debug - Streamlit Server Port: {os.getenv('STREAMLIT_SERVER_PORT', 'Not found')}")
-    st.info(f"🔍 Debug - Environment Keys with 'streamlit': {[k for k in os.environ.keys() if 'streamlit' in k.lower()]}")
+    st.info(f"🔍 Debug - Environment Keys with 'streamlit': {st.secrets}")
     
     st.info("👋 Please sign in with your Google account to continue.")
     
