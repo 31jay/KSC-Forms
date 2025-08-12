@@ -22,7 +22,7 @@ class Config:
         
         # Determine redirect URI based on environment
         if 'streamlit.app' in os.getenv('STREAMLIT_SHARING_URL', ''):
-            self.REDIRECT_URI = 'https://ksc-at-khec.streamlit.app/'
+            self.REDIRECT_URI = 'https://ksc-khec.streamlit.app/'
         else:
             self.REDIRECT_URI = 'http://localhost:8501/'
         
