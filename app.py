@@ -254,6 +254,14 @@ def handle_auth_callback():
 
 def show_login_page():
     """Display the login page"""
+    # Debug information
+    st.info(f"🔍 Debug - Redirect URL: {config.REDIRECT_URI}")
+    st.info(f"🔍 Debug - Current Working Dir: {os.getcwd()}")
+    st.info(f"🔍 Debug - User: {os.getenv('USER', 'Not found')}")
+    st.info(f"🔍 Debug - Home: {os.getenv('HOME', 'Not found')}")
+    st.info(f"🔍 Debug - Streamlit Server Port: {os.getenv('STREAMLIT_SERVER_PORT', 'Not found')}")
+    st.info(f"🔍 Debug - Environment Keys with 'streamlit': {[k for k in os.environ.keys() if 'streamlit' in k.lower()]}")
+    
     st.info("👋 Please sign in with your Google account to continue.")
     
     col1, col2, col3 = st.columns([1, 2, 1])
@@ -268,6 +276,9 @@ def show_login_page():
                 st.error(f"Authentication error: {error}")
         
         auth_url = get_google_auth_url()
+        
+        # Debug: Show the auth URL
+        st.code(f"Auth URL: {auth_url}")
         
         # Custom Google Sign-in button
         st.markdown(f"""
@@ -301,37 +312,8 @@ def show_login_page():
                 </a>
             </div>
         """, unsafe_allow_html=True)
-    
-    # Information section
-    st.markdown("---")
-    st.subheader("ℹ️ About This Demo")
-    st.write("""
-    This application demonstrates Google OAuth 2.0 integration with Streamlit. 
-    After signing in, you'll see your:
-    - 📷 Profile picture
-    - 👤 Full name  
-    - 📧 Email address
-    - ✅ Google account verification status
-    """)
-    
-    # Technical details
-    with st.expander("🔧 Technical Details"):
-        current_url = st.query_params.get('url', 'Not available')
-        st.write(f"""
-        - **OAuth 2.0 Flow**: Authorization Code Grant
-        - **Scopes**: `{', '.join(config.SCOPES)}`
-        - **Redirect URI**: `{config.REDIRECT_URI}`
-        - **Client ID**: `{config.CLIENT_ID[:20]}...`
-        - **Environment**: `{'Production' if 'localhost' not in config.REDIRECT_URI else 'Development'}`
-        - **Current URL**: `{st.query_params}`
-        - **Environment Variables**: `{[k for k in os.environ.keys() if 'STREAMLIT' in k]}`
-        """)
-        
-        # Show auth URL for debugging
-        if st.checkbox("Show Auth URL"):
-            auth_url = get_google_auth_url()
-            st.code(auth_url)
 
+        
 def main():
     st.set_page_config(
         page_title="Google OAuth Demo",
