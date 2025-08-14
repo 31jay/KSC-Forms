@@ -516,7 +516,7 @@ def main():
             st.session_state.selectedTeam = team
         
         if st.session_state.selectedTeam:
-            st.success(f"✅ Selected Team: **{st.session_state.selectedTeam}**")
+            st.success(f"Please Review the guidelines for **{st.session_state.selectedTeam}**")
         else:
             st.warning("⚠️ Please select a team to continue")
         
