@@ -5,6 +5,7 @@ from email.mime.multipart import MIMEMultipart
 from email.utils import formataddr
 import logging
 from datetime import datetime
+import time
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -68,73 +69,185 @@ def create_email_content(recipient_name, team_name, submission_type, team_detail
     
     return content
 
-def send_confirmation_email(recipient_email, recipient_name, team_name, submission_type, team_details=None):
-    """Send confirmation email to the recipient"""
-    try:
-        # Get SMTP configuration
-        smtp_config = get_smtp_config()
-        if not smtp_config:
-            logger.error("Failed to get SMTP configuration")
-            return False
-        
-        # Create email content
-        email_content = create_email_content(recipient_name, team_name, submission_type, team_details)
-        if not email_content:
-            logger.error("Failed to create email content")
-            return False
-        
-        # Create message
-        msg = MIMEMultipart()
-        msg['From'] = formataddr((smtp_config['sender_name'], smtp_config['sender_email']))
-        msg['To'] = recipient_email
-        
-        # Subject line based on submission type
-        if submission_type == "Team":
-            subject = f"Team Application Confirmed - {team_name} | Knowledge Sharing Circle"
-        else:
-            subject = f"Application Confirmed - {team_name} | Knowledge Sharing Circle"
-        
-        msg['Subject'] = subject
-        
-        # Attach email body
-        msg.attach(MIMEText(email_content, 'plain', 'utf-8'))
-        
-        # Send email
-        with smtplib.SMTP(smtp_config['server'], smtp_config['port']) as server:
-            server.starttls()
-            server.login(smtp_config['username'], smtp_config['password'])
+def send_confirmation_email(recipient_email, recipient_name, team_name, submission_type, team_details=None, retry_count=3):
+    """Send confirmation email to the recipient with improved connection handling"""
+    
+    for attempt in range(retry_count):
+        try:
+            # Get SMTP configuration
+            smtp_config = get_smtp_config()
+            if not smtp_config:
+                logger.error("Failed to get SMTP configuration")
+                return False
             
-            text = msg.as_string()
-            server.sendmail(smtp_config['sender_email'], recipient_email, text)
-        
-        logger.info(f"Confirmation email sent successfully to {recipient_email}")
-        return True
-        
-    except smtplib.SMTPAuthenticationError:
-        logger.error("SMTP Authentication failed - check username/password")
-        return False
-    except smtplib.SMTPRecipientsRefused:
-        logger.error(f"Recipient email refused: {recipient_email}")
-        return False
-    except smtplib.SMTPServerDisconnected:
-        logger.error("SMTP Server disconnected")
-        return False
-    except Exception as e:
-        logger.error(f"Error sending email to {recipient_email}: {str(e)}")
-        return False
+            # Create email content
+            email_content = create_email_content(recipient_name, team_name, submission_type, team_details)
+            if not email_content:
+                logger.error("Failed to create email content")
+                return False
+            
+            # Create message
+            msg = MIMEMultipart()
+            msg['From'] = formataddr((smtp_config['sender_name'], smtp_config['sender_email']))
+            msg['To'] = recipient_email
+            
+            # Subject line based on submission type
+            if submission_type == "Team":
+                subject = f"Team Application Confirmed - {team_name} | Knowledge Sharing Circle"
+            else:
+                subject = f"Application Confirmed - {team_name} | Knowledge Sharing Circle"
+            
+            msg['Subject'] = subject
+            
+            # Attach email body
+            msg.attach(MIMEText(email_content, 'plain', 'utf-8'))
+            
+            # Enhanced SMTP connection with better error handling
+            server = None
+            try:
+                # Create SMTP connection
+                server = smtplib.SMTP(smtp_config['server'], smtp_config['port'])
+                server.set_debuglevel(0)  # Set to 1 for debugging
+                
+                # Enhanced connection setup
+                server.ehlo()  # Identify ourselves to smtp gmail client
+                server.starttls()  # Enable security
+                server.ehlo()  # Re-identify ourselves as an encrypted connection
+                
+                # Login with credentials
+                server.login(smtp_config['username'], smtp_config['password'])
+                
+                # Send email
+                text = msg.as_string()
+                server.sendmail(smtp_config['sender_email'], recipient_email, text)
+                
+                # Close connection properly
+                server.quit()
+                
+                logger.info(f"Confirmation email sent successfully to {recipient_email}")
+                return True
+                
+            except smtplib.SMTPServerDisconnected:
+                logger.warning(f"SMTP Server disconnected on attempt {attempt + 1}")
+                if server:
+                    try:
+                        server.quit()
+                    except:
+                        pass
+                
+                # Wait before retry
+                if attempt < retry_count - 1:
+                    time.sleep(2 ** attempt)  # Exponential backoff
+                    continue
+                else:
+                    raise
+                    
+            except Exception as e:
+                if server:
+                    try:
+                        server.quit()
+                    except:
+                        pass
+                raise e
+            
+        except smtplib.SMTPAuthenticationError as e:
+            logger.error(f"SMTP Authentication failed: {str(e)}")
+            logger.error("Check your email credentials in secrets.toml")
+            return False
+            
+        except smtplib.SMTPRecipientsRefused as e:
+            logger.error(f"Recipient email refused: {recipient_email} - {str(e)}")
+            return False
+            
+        except smtplib.SMTPServerDisconnected as e:
+            logger.error(f"SMTP Server disconnected after {retry_count} attempts: {str(e)}")
+            return False
+            
+        except smtplib.SMTPConnectError as e:
+            logger.error(f"SMTP Connection error: {str(e)}")
+            return False
+            
+        except smtplib.SMTPException as e:
+            logger.error(f"SMTP Error: {str(e)}")
+            return False
+            
+        except Exception as e:
+            logger.error(f"Unexpected error sending email to {recipient_email}: {str(e)}")
+            return False
+    
+    return False
 
 def test_email_connection():
-    """Test email connection and configuration"""
+    """Test email connection and configuration with enhanced diagnostics"""
     try:
         smtp_config = get_smtp_config()
         if not smtp_config:
-            return False, "Failed to get SMTP configuration"
+            return False, "Failed to get SMTP configuration from secrets.toml"
         
-        with smtplib.SMTP(smtp_config['server'], smtp_config['port']) as server:
+        # Test connection step by step
+        server = None
+        try:
+            # Step 1: Connect to server
+            server = smtplib.SMTP(smtp_config['server'], smtp_config['port'])
+            server.set_debuglevel(0)
+            
+            # Step 2: Start TLS
+            server.ehlo()
             server.starttls()
+            server.ehlo()
+            
+            # Step 3: Login
             server.login(smtp_config['username'], smtp_config['password'])
-        
-        return True, "Email connection successful"
+            
+            # Step 4: Close connection
+            server.quit()
+            
+            return True, "Email connection successful - all steps completed"
+            
+        except smtplib.SMTPAuthenticationError as e:
+            return False, f"Authentication failed: {str(e)}. Check username/password in secrets.toml"
+        except smtplib.SMTPConnectError as e:
+            return False, f"Connection failed: {str(e)}. Check SMTP server and port"
+        except smtplib.SMTPServerDisconnected as e:
+            return False, f"Server disconnected: {str(e)}. Try again or check network"
+        except Exception as e:
+            return False, f"Connection test failed: {str(e)}"
+        finally:
+            if server:
+                try:
+                    server.quit()
+                except:
+                    pass
         
     except Exception as e:
-        return False, f"Email connection failed: {str(e)}"
+        return False, f"Test failed: {str(e)}"
+
+# Alternative email sending function for problematic SMTP servers
+def send_email_alternative_method(recipient_email, recipient_name, team_name, submission_type, team_details=None):
+    """Alternative email sending method using different SMTP approach"""
+    try:
+        smtp_config = get_smtp_config()
+        if not smtp_config:
+            return False
+        
+        email_content = create_email_content(recipient_name, team_name, submission_type, team_details)
+        if not email_content:
+            return False
+        
+        # Create simple message
+        msg = MIMEText(email_content, 'plain', 'utf-8')
+        msg['Subject'] = f"Application Confirmed - {team_name} | Knowledge Sharing Circle"
+        msg['From'] = smtp_config['sender_email']
+        msg['To'] = recipient_email
+        
+        # Use context manager for automatic cleanup
+        with smtplib.SMTP_SSL(smtp_config['server'], 465) as server:  # Try SSL instead of TLS
+            server.login(smtp_config['username'], smtp_config['password'])
+            server.send_message(msg)
+        
+        logger.info(f"Email sent via alternative method to {recipient_email}")
+        return True
+        
+    except Exception as e:
+        logger.error(f"Alternative email method failed: {str(e)}")
+        return False
