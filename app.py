@@ -404,7 +404,7 @@ def team_form():
         
         # Add member button
         if st.session_state.num_tabs < 5:
-            if st.form_submit_button("➕ Add Team Member"):
+            if st.form_submit_button("➕ Add Team Member", use_container_width=True):
                 add_tab()
                 st.rerun()
         
