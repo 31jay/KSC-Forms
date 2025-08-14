@@ -1,0 +1,158 @@
+{
+  "Social Media Team": {
+    "Why Join": "I love keeping communities engaged online, crafting posts, and shaping our digital vibe.",
+    "Key Responsibilities": [
+      "Plan and maintain the social media calendar for the Circle",
+      "Create and write captions for posts, stories, and updates",
+      "Coordinate with Graphics & Content teams for assets and approvals",
+      "Monitor comments and messages; escalate important queries",
+      "Report simple engagement trends after events",
+      "Be accountable for a consistent and accurate online presence"
+    ],
+    "Why Avoid": "If you prefer scrolling in peace, hate notifications, or don’t want constant posting schedules and public feedback, skip this role."
+  },
+  "Technical Team": {
+    "Why Join": "I love solving technical problems, building systems, and being the person who makes digital parts actually work.",
+    "Key Responsibilities": [
+      "Build and maintain registration pages, event sites, and streaming setups",
+      "Set up and manage live AV, polling/voting tools, and backups",
+      "Troubleshoot tech issues during rehearsals and events",
+      "Document systems and handover notes for future runs",
+      "Coordinate with Events and Panel teams for on-stage tech cues",
+      "Be accountable for the reliability of our technical infrastructure"
+    ],
+    "Why Avoid": "If you dislike last-minute firefights, on-the-spot bug fixes, or being asked to ‘fix it now’ under pressure, this isn’t for you."
+  },
+  "Research and Development Team": {
+    "Why Join": "I love digging into topics, testing new ideas, and turning curiosity into better event formats.",
+    "Key Responsibilities": [
+      "Research themes, speakers, and relevant trends for events",
+      "Prepare briefing notes, concept docs, and pilot formats",
+      "Run small experiments or prototypes and gather feedback",
+      "Share evidence-based recommendations with core teams",
+      "Archive findings for future reference",
+      "Be accountable for the quality and practicality of new proposals"
+    ],
+    "Why Avoid": "If you prefer quick answers, dislike iterative work or long-term experiments, and don’t enjoy digging through details, pass on this one."
+  },
+  "Content Team": {
+    "Why Join": "I love turning ideas into clear words — scripts, descriptions, and voice that represent the Circle.",
+    "Key Responsibilities": [
+      "Write event descriptions, scripts, emcee cues, and press notes",
+      "Prepare social captions and short-form content in coordination with Social Media",
+      "Proofread and edit outputs from other teams for clarity and tone",
+      "Maintain the Circle’s writing voice and guidelines",
+      "Support Panel and Events teams with speaker briefs",
+      "Be accountable for accurate, polished, and consistent content"
+    ],
+    "Why Avoid": "If tight writing deadlines, repeated edits, or constant proofreading make you wince, this role will test your patience."
+  },
+  "Events Team": {
+    "Why Join": "I love planning and executing live experiences — logistics, schedules, and the small chaos that makes an event real.",
+    "Key Responsibilities": [
+      "Design event timelines and run-of-show documents",
+      "Coordinate venues, vendors, and on-site logistics",
+      "Manage rehearsals, stage setups, and signage",
+      "Lead on-day coordination and rapid decisions",
+      "Debrief and capture lessons after each event",
+      "Be accountable for events running smoothly and safely"
+    ],
+    "Why Avoid": "If you love watching events in peace, want to avoid instant decision-making, or dislike high-pressure days with fast pivots, skip this role."
+  },
+  "Panel and Emcee Team": {
+    "Why Join": "I love hosting, moderating conversations, and keeping the audience engaged from the stage.",
+    "Key Responsibilities": [
+      "Prepare scripts, speaker intros, and moderation plans",
+      "Coordinate with speakers to set expectations and timing",
+      "Moderate panels and manage audience Q&A",
+      "Keep sessions on schedule and manage time cues",
+      "Handle unexpected stage moments calmly",
+      "Be accountable for the flow, tone, and timing of sessions"
+    ],
+    "Why Avoid": "If public speaking stresses you out, you avoid thinking on your feet, or unpredictable live moments drain you, this isn’t the best fit."
+  },
+  "Photography and Videography Team": {
+    "Why Join": "I love capturing moments, composing shots, and turning event energy into photos and videos.",
+    "Key Responsibilities": [
+      "Document events through photography and video",
+      "Plan shot lists and coverage schedules",
+      "Edit and deliver media for social and archives",
+      "Manage media storage, naming, and consent forms",
+      "Coordinate with Social Media for timely uploads",
+      "Be accountable for the visual archive and final media quality"
+    ],
+    "Why Avoid": "If you’d rather watch events without holding a camera, dislike moving through crowds, or don’t want to spend hours editing, skip this one."
+  },
+  "Outreach Team": {
+    "Why Join": "I love meeting people, building partnerships, and creating opportunities for collaboration.",
+    "Key Responsibilities": [
+      "Identify potential partners, sponsors, and collaborators",
+      "Draft outreach messages and pitch briefs",
+      "Schedule and represent the Circle in external meetings",
+      "Maintain a partners/contact tracker and follow-ups",
+      "Coordinate partnership deliverables with internal teams",
+      "Be accountable for maintaining ethical and consistent external relations"
+    ],
+    "Why Avoid": "If calling strangers, pitching ideas, or attending frequent meetings makes you uneasy, this role will feel draining."
+  },
+  "Alumni Team": {
+    "Why Join": "I love reconnecting with past members, creating alumni touchpoints, and keeping the network alive.",
+    "Key Responsibilities": [
+      "Maintain an alumni database and contact records",
+      "Organize alumni meetups, talks, and engagement opportunities",
+      "Invite alumni to mentor, judge, or speak at events",
+      "Coordinate alumni communications and updates",
+      "Document alumni contributions and impacts",
+      "Be accountable for nurturing a living alumni community"
+    ],
+    "Why Avoid": "If following up regularly, scheduling across busy calendars, or long-term relationship upkeep isn’t your thing, skip this role."
+  },
+  "Volunteer Team": {
+    "Why Join": "I love being the on-ground helper — ready to jump in, assist teams, and make sure attendees feel supported.",
+    "Key Responsibilities": [
+      "Recruit, assign, and brief volunteers before events",
+      "Manage volunteer rosters and shift schedules",
+      "Guide guests, handle basic crowd tasks, and assist logistics",
+      "Act as the on-site support link between teams",
+      "Collect volunteer feedback and improve processes",
+      "Be accountable for volunteer readiness and guest experience"
+    ],
+    "Why Avoid": "If you’d rather blend into the audience, avoid quick instructions, or dislike active on-site hustle, this role won’t suit you."
+  },
+  "Mentorship Team": {
+    "Why Join": "I love guiding others, sharing knowledge, and watching people grow through support and feedback.",
+    "Key Responsibilities": [
+      "Match mentors and mentees and set expectations",
+      "Run workshops, office hours, and small sessions",
+      "Track mentee progress and provide constructive feedback",
+      "Create mentorship materials and learning paths",
+      "Report mentorship outcomes to the Circle leadership",
+      "Be accountable for mentee progress and the mentorship experience"
+    ],
+    "Why Avoid": "If answering repeated questions, committing to follow-ups, or investing in someone’s slow growth drains you, this isn’t the best pick."
+  },
+  "Competition Team": {
+    "Why Join": "I love designing fair contests, creating exciting challenges, and running smooth competitive experiences.",
+    "Key Responsibilities": [
+      "Design competition formats, rules, and judging criteria",
+      "Manage registrations, participant communications, and schedules",
+      "Coordinate judges, scoring systems, and prize logistics",
+      "Resolve disputes and ensure transparency",
+      "Document results and learnings for future contests",
+      "Be accountable for fairness and clarity in competitions"
+    ],
+    "Why Avoid": "If you dislike handling disputes, enforcing rules, or dealing with stressed participants arguing about fairness, skip this one."
+  },
+  "Graphics Team": {
+    "Why Join": "I love designing visuals, building event branding, and making everything look polished and cohesive.",
+    "Key Responsibilities": [
+      "Create posters, banners, social assets, and stage visuals",
+      "Maintain a design asset library and brand guideline",
+      "Work with Content & Social Media for timely creatives",
+      "Iterate on feedback and deliver final files on deadline",
+      "Prepare print-ready and digital-ready versions as needed",
+      "Be accountable for consistent visual identity across channels"
+    ],
+    "Why Avoid": "If tight deadlines, repeated revisions, or long fine-tuning sessions frustrate you, this role will feel stressful."
+  }
+}

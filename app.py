@@ -1,388 +1,554 @@
 import streamlit as st
-import requests
-from urllib.parse import urlencode
-import json
+import json 
+import re
 import os
-from datetime import datetime, timedelta
-import hashlib
-import secrets
 import time
+from datetime import datetime
 
-# Configuration
-class Config:
-    def __init__(self):
-        # Load from environment variables or Streamlit secrets
-        self.CLIENT_ID = self._get_secret('GOOGLE_CLIENT_ID', 'google_oauth', 'client_id')
-        self.CLIENT_SECRET = self._get_secret('GOOGLE_CLIENT_SECRET', 'google_oauth', 'client_secret')
-        
-        # Validate that secrets are loaded
-        if not self.CLIENT_ID or not self.CLIENT_SECRET:
-            st.error("❌ Google OAuth credentials not found. Please check your environment variables or secrets configuration.")
-            st.stop()
-        
-        # Determine redirect URI based on environment
-        # Multiple methods to detect Streamlit Cloud deployment
-        is_streamlit_cloud = (
-            # Check for Streamlit Cloud environment variables
-            os.getenv('STREAMLIT_SERVER_PORT') is not None or
-            os.getenv('STREAMLIT_SHARING_URL') is not None or
-            # Check if running on streamlit.app domain
-            'streamlit.app' in str(os.getenv('STREAMLIT_SHARING_URL', '')) or
-            # Check for other Streamlit Cloud indicators
-            os.getenv('HOME', '').startswith('/home/appuser') or
-            os.getenv('USER') == 'appuser' or
-            # Check current working directory pattern
-            '/app' in os.getcwd() or
-            # Check if we can detect streamlit cloud from hostname
-            any('streamlit' in str(val).lower() for val in os.environ.values())
-        )
-        
-        if is_streamlit_cloud:
-            self.REDIRECT_URI = 'https://ksc-khec.streamlit.app'
-        else:
-            self.REDIRECT_URI = 'http://localhost:8501/'
-        
-        self.SCOPES = ['openid', 'email', 'profile']
-        self.GOOGLE_AUTH_URL = 'https://accounts.google.com/o/oauth2/v2/auth'
-        self.GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token'
-        self.GOOGLE_USER_INFO_URL = 'https://www.googleapis.com/oauth2/v2/userinfo'
-    
-    def _get_secret(self, env_var, secrets_section, secrets_key):
-        """Get secret from environment variable or Streamlit secrets"""
-        # First try environment variable
-        value = os.getenv(env_var)
-        if value:
-            return value
-        
-        # Then try Streamlit secrets
-        try:
-            return st.secrets[secrets_section][secrets_key]
-        except (KeyError, FileNotFoundError):
-            return None
+FILE = "team_guidelines.json"
+INDIVIDUAL_RESPONSES_FILE = "individual_responses.json"
+TEAM_RESPONSES_FILE = "team_responses.json"
+CIRCLE_INFO_FILE = "circle_info.json"
 
-config = Config()
+# Load team guidelines
+with open(FILE) as f:
+    data = json.load(f)
 
-def init_session_state():
-    """Initialize session state variables"""
-    if 'authenticated' not in st.session_state:
-        st.session_state.authenticated = False
-    if 'user_info' not in st.session_state:
-        st.session_state.user_info = None
-    if 'access_token' not in st.session_state:
-        st.session_state.access_token = None
-    if 'oauth_state' not in st.session_state:
-        st.session_state.oauth_state = None
-    if 'auth_time' not in st.session_state:
-        st.session_state.auth_time = None
+# Load circle and executive info
+with open(CIRCLE_INFO_FILE) as f:
+    circle_data = json.load(f)
 
-def generate_state():
-    """Generate a random state parameter for CSRF protection"""
-    return secrets.token_urlsafe(16)  # Shorter state for better compatibility
+# Initialize session state
+if "num_tabs" not in st.session_state:
+    st.session_state.num_tabs = 1
+if "selectedTeam" not in st.session_state:
+    st.session_state.selectedTeam = None
+if "show_exec_modal" not in st.session_state:
+    st.session_state.show_exec_modal = True  # Show on initial load
+if "form_submitted" not in st.session_state:
+    st.session_state.form_submitted = False
 
-def get_google_auth_url():
-    """Generate Google OAuth authorization URL"""
-    # Generate new state and store it
-    state = generate_state()
-    st.session_state.oauth_state = state
-    st.session_state.auth_time = time.time()
-    
-    params = {
-        'client_id': config.CLIENT_ID,
-        'redirect_uri': config.REDIRECT_URI,
-        'scope': ' '.join(config.SCOPES),
-        'response_type': 'code',
-        'access_type': 'offline',
-        'prompt': 'consent',
-        'state': state,
-        'include_granted_scopes': 'true'
+def add_custom_css():
+    """Add custom CSS for better mobile experience and clean styling"""
+    st.markdown("""
+    <style>
+    /* Main container styling */
+    .main-container {
+        padding: 1rem;
+        background: #f8f9fa;
+        border-radius: 8px;
+        margin-bottom: 1rem;
+        border-left: 4px solid #007bff;
     }
     
-    return f"{config.GOOGLE_AUTH_URL}?{urlencode(params)}"
-
-def is_state_valid(received_state):
-    """Check if the received state is valid"""
-    if not received_state or not st.session_state.oauth_state:
-        return False
-    
-    # Check if state matches
-    if received_state != st.session_state.oauth_state:
-        return False
-    
-    # Check if state is not too old (10 minutes max)
-    if st.session_state.auth_time:
-        age = time.time() - st.session_state.auth_time
-        if age > 600:  # 10 minutes
-            return False
-    
-    return True
-
-def exchange_code_for_token(authorization_code, state=None):
-    """Exchange authorization code for access token"""
-    # Skip state validation in development if needed
-    is_development = 'localhost' in config.REDIRECT_URI
-    
-    if not is_development and state:
-        if not is_state_valid(state):
-            st.error("Authentication session expired or invalid. Please try again.")
-            return None
-    
-    token_data = {
-        'client_id': config.CLIENT_ID,
-        'client_secret': config.CLIENT_SECRET,
-        'code': authorization_code,
-        'grant_type': 'authorization_code',
-        'redirect_uri': config.REDIRECT_URI,
+    /* Header styling */
+    .main-header {
+        text-align: center;
+        color: #333;
+        margin-bottom: 1rem;
     }
     
-    try:
-        response = requests.post(config.GOOGLE_TOKEN_URL, data=token_data, timeout=10)
-        response.raise_for_status()
-        return response.json()
-    except requests.RequestException as e:
-        st.error(f"Error exchanging code for token: {str(e)}")
-        return None
+    .main-title {
+        font-size: 2rem;
+        font-weight: bold;
+        margin-bottom: 0.5rem;
+        color: #007bff;
+    }
+    
+    .main-subtitle {
+        font-size: 1rem;
+        color: #666;
+    }
+    
+    /* Executive modal styling */
+    .exec-modal {
+        background: white;
+        padding: 1.5rem;
+        border-radius: 8px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        border: 1px solid #e9ecef;
+        margin: 1rem 0;
+    }
+    
+    .exec-card {
+        background: #f8f9fa;
+        padding: 1rem;
+        border-radius: 6px;
+        margin: 0.5rem 0;
+        border-left: 3px solid #007bff;
+    }
+    
+    .exec-name {
+        font-size: 1.1rem;
+        font-weight: bold;
+        margin-bottom: 0.3rem;
+        color: #333;
+    }
+    
+    .exec-role {
+        font-size: 0.9rem;
+        color: #007bff;
+        margin-bottom: 0.2rem;
+    }
+    
+    .exec-contact {
+        font-size: 0.8rem;
+        color: #666;
+    }
+    
+    /* Form styling */
+    .form-container {
+        background: white;
+        padding: 1.5rem;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        margin: 1rem 0;
+        border: 1px solid #e9ecef;
+    }
+    
+    /* Team guidelines styling */
+    .team-guidelines {
+        background: white;
+        padding: 1.5rem;
+        border-radius: 8px;
+        margin: 1rem 0;
+        border: 1px solid #e9ecef;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    
+    .guideline-section {
+        margin: 1rem 0;
+        padding: 1rem;
+        background: #f8f9fa;
+        border-radius: 6px;
+        border-left: 3px solid #007bff;
+    }
+    
+    /* Close button styling */
+    .close-btn {
+        position: absolute;
+        top: 10px;
+        right: 15px;
+        background: #dc3545;
+        color: white;
+        border: none;
+        border-radius: 50%;
+        width: 30px;
+        height: 30px;
+        cursor: pointer;
+        font-size: 16px;
+        line-height: 1;
+    }
+    
+    /* Center button styling */
+    .center-btn-container {
+        display: flex;
+        justify-content: center;
+        margin: 1rem 0;
+    }
+    
+    /* Mobile responsive */
+    @media (max-width: 768px) {
+        .main-title {
+            font-size: 1.5rem;
+        }
+        
+        .exec-modal {
+            padding: 1rem;
+            margin: 0.5rem 0;
+        }
+        
+        .exec-card {
+            padding: 0.8rem;
+        }
+        
+        .form-container {
+            padding: 1rem;
+        }
+        
+        .team-guidelines {
+            padding: 1rem;
+        }
+    }
+    </style>
+    """, unsafe_allow_html=True)
 
-def get_user_info(access_token):
-    """Get user information from Google API"""
-    headers = {'Authorization': f'Bearer {access_token}'}
-    
-    try:
-        response = requests.get(config.GOOGLE_USER_INFO_URL, headers=headers, timeout=10)
-        response.raise_for_status()
-        return response.json()
-    except requests.RequestException as e:
-        st.error(f"Error fetching user info: {str(e)}")
-        return None
+def display_header():
+    """Display the main header with gradient background"""
+    st.markdown("""
+    <div class="main-container">
+        <div class="main-header">
+            <div class="main-title">🌟 Knowledge Sharing Circle</div>
+            <div class="main-subtitle">Join Our Community • Share Knowledge • Grow Together</div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
 
-def logout():
-    """Clear session state and logout user"""
-    # Clear all authentication related session state
-    keys_to_clear = ['authenticated', 'user_info', 'access_token', 'oauth_state', 'auth_time']
-    for key in keys_to_clear:
-        if key in st.session_state:
-            del st.session_state[key]
-    
-    # Clear URL parameters
-    st.query_params.clear()
-    st.rerun()
-
-def display_user_profile(user_info):
-    """Display user profile information"""
-    col1, col2 = st.columns([1, 3])
-    
-    with col1:
-        if user_info.get('picture'):
-            st.image(user_info['picture'], width=150, caption="Profile Picture")
-        else:
-            st.info("No profile picture available")
-    
-    with col2:
-        st.subheader("Welcome!")
-        st.write(f"**Name:** {user_info.get('name', 'N/A')}")
-        st.write(f"**Email:** {user_info.get('email', 'N/A')}")
-        st.write(f"**Google ID:** {user_info.get('id', 'N/A')}")
-        
-        if user_info.get('verified_email'):
-            st.success("✅ Email Verified")
-        else:
-            st.warning("⚠️ Email Not Verified")
-        
-        # Additional user info if available
-        if user_info.get('locale'):
-            st.write(f"**Locale:** {user_info['locale']}")
-        
-        # Display authentication time
-        if st.session_state.auth_time:
-            auth_time = datetime.fromtimestamp(st.session_state.auth_time)
-            st.write(f"**Authenticated at:** {auth_time.strftime('%Y-%m-%d %H:%M:%S')}")
-        
-        # Logout button
-        st.markdown("---")
-        col_logout1, col_logout2, col_logout3 = st.columns([1, 1, 1])
-        with col_logout2:
-            if st.button("🚪 Logout", type="secondary", use_container_width=True):
-                logout()
-
-def handle_auth_callback():
-    """Handle the OAuth callback"""
-    query_params = st.query_params
-    
-    if 'code' in query_params and not st.session_state.authenticated:
-        authorization_code = query_params.get('code')
-        state = query_params.get('state')
-        error = query_params.get('error')
-        
-        # Handle OAuth errors
-        if error:
-            st.error(f"OAuth Error: {error}")
-            if error == 'access_denied':
-                st.info("You denied access to the application. Please try again if you want to proceed.")
-            return False
-        
-        if authorization_code:
-            with st.spinner("🔐 Authenticating with Google..."):
-                # Exchange code for token
-                token_response = exchange_code_for_token(authorization_code, state)
+def display_executive_modal():
+    """Display executive members modal using Streamlit components"""
+    if st.session_state.show_exec_modal:
+        with st.container():
+            # Close button at top right
+            col1, col2, col3 = st.columns([4, 1, 1])
+            with col3:
+                if st.button("✖️ Close", key="close_exec_modal"):
+                    st.session_state.show_exec_modal = False
+                    st.rerun()
+            
+            st.markdown("### 👥 Meet Our Executive Team")
+            st.markdown("---")
+            
+            # Create executive cards in a grid
+            exec_list = list(circle_data["executive_members"].items())
+            
+            for i in range(0, len(exec_list), 2):
+                cols = st.columns(2)
                 
-                if token_response and 'access_token' in token_response:
-                    access_token = token_response['access_token']
-                    
-                    # Get user information
-                    user_info = get_user_info(access_token)
-                    
-                    if user_info:
-                        # Store in session state
-                        st.session_state.user_info = user_info
-                        st.session_state.access_token = access_token
-                        st.session_state.authenticated = True
+                for j, col in enumerate(cols):
+                    if i + j < len(exec_list):
+                        position, member_info = exec_list[i + j]
                         
-                        # Clear URL parameters
-                        st.query_params.clear()
-                        st.success("✅ Authentication successful!")
-                        st.rerun()
-                        return True
-                    else:
-                        st.error("❌ Failed to retrieve user information from Google.")
-                else:
-                    st.error("❌ Failed to get access token from Google.")
-                
-                # Clear state on failure
-                st.session_state.oauth_state = None
-                st.session_state.auth_time = None
-    
-    return False
+                        with col:
+                            with st.container():
+                                st.markdown(f"**{member_info['name']}**")
+                                st.markdown(f"*{position}*")
+                                st.write(f"📧 {member_info['contact']}")
+                                st.write(f"🎓 {member_info['department']}")
+                                st.caption(member_info['role_description'])
+                                st.markdown("---")
 
-def show_login_page():
-    """Display the login page"""
-    # Debug information
-    st.info(f"🔍 Debug - Redirect URL: {config.REDIRECT_URI}")
-    st.info(f"🔍 Debug - Current Working Dir: {os.getcwd()}")
-    st.info(f"🔍 Debug - User: {os.getenv('USER', 'Not found')}")
-    st.info(f"🔍 Debug - Home: {os.getenv('HOME', 'Not found')}")
-    st.info(f"🔍 Debug - Streamlit Server Port: {os.getenv('STREAMLIT_SERVER_PORT', 'Not found')}")
-    st.info(f"🔍 Debug - Environment Keys with 'streamlit': {st.secrets}")
-    
-    st.info("👋 Please sign in with your Google account to continue.")
-    
-    col1, col2, col3 = st.columns([1, 2, 1])
-    with col2:
-        # Check if we're in the middle of an auth flow
-        query_params = st.query_params
-        if 'error' in query_params:
-            error = query_params.get('error')
-            if error == 'access_denied':
-                st.warning("⚠️ You need to grant permission to continue.")
-            else:
-                st.error(f"Authentication error: {error}")
-        
-        auth_url = get_google_auth_url()
-        
-        # Debug: Show the auth URL
-        st.code(f"Auth URL: {auth_url}")
-        
-        # Custom Google Sign-in button
-        st.markdown(f"""
-            <div style="text-align: center; margin: 20px 0;">
-                <a href="{auth_url}" target="_self" style="text-decoration: none;">
-                    <div style="
-                        display: inline-flex;
-                        align-items: center;
-                        background-color: #4285f4;
-                        color: white;
-                        border: none;
-                        padding: 12px 24px;
-                        border-radius: 6px;
-                        cursor: pointer;
-                        font-size: 16px;
-                        font-weight: 500;
-                        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-                        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-                        transition: background-color 0.2s;
-                        gap: 12px;
-                    " onmouseover="this.style.backgroundColor='#3367d6'" 
-                       onmouseout="this.style.backgroundColor='#4285f4'">
-                        <svg width="20" height="20" viewBox="0 0 24 24" style="flex-shrink: 0;">
-                            <path fill="white" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                            <path fill="white" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                            <path fill="white" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                            <path fill="white" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-                        </svg>
-                        <span>Sign in with Google</span>
-                    </div>
-                </a>
-            </div>
-        """, unsafe_allow_html=True)
+def display_exec_toggle_button():
+    """Display centered button to show executive info"""
+    if not st.session_state.show_exec_modal:
+        st.markdown('<div class="center-btn-container">', unsafe_allow_html=True)
+        if st.button("👥 View Executive Members", key="show_exec_btn", help="View Executive Members"):
+            st.session_state.show_exec_modal = True
+            st.rerun()
+        st.markdown('</div>', unsafe_allow_html=True)
 
+def load_responses(file_path):
+    """Load existing responses from JSON file"""
+    if os.path.exists(file_path):
+        try:
+            with open(file_path, 'r') as f:
+                data = json.load(f)
+                # Ensure we always return a list
+                if isinstance(data, dict):
+                    return []  # Reset if corrupted
+                return data if isinstance(data, list) else []
+        except:
+            return []
+    return []
 
-def main():
-    st.set_page_config(
-        page_title="Google OAuth Demo",
-        page_icon="🔐",
-        layout="wide",
-        initial_sidebar_state="collapsed"
-    )
+def save_response(file_path, response_data):
+    """Save response to JSON file"""
+    responses = load_responses(file_path)
+    responses.append(response_data)
+    with open(file_path, 'w') as f:
+        json.dump(responses, f, indent=2)
+
+def add_tab():
+    if st.session_state.num_tabs < 5:  # Max 5 members
+        st.session_state.num_tabs += 1
+
+def validate_form_data(name, crn, contact, email):
+    """Validate form inputs and return errors"""
+    errors = []
     
-    # Initialize session state
-    init_session_state()
+    if not name.strip():
+        errors.append("Name is required")
+    elif not re.match(r"^[A-Za-z]+(?: [A-Za-z]+)+$", name.strip()):
+        errors.append("Please enter your full name (first and last name)")
     
-    # Header
-    st.title("🔐 Google OAuth Authentication Demo")
-    st.markdown("---")
+    if not crn.strip():
+        errors.append("CRN is required")
+    elif not re.match(r"^(?:77(?=01(0[1-9]|[1-3][0-9]|4[0-9]))|(?:78|79|80|81)(?:01(0[1-9]|[1-3][0-9]|4[0-9])|02(0[1-9]|[1-8][0-9]|9[0-7])|0[34](0[1-9]|[1-3][0-9]|4[0-9])))$", crn):
+        errors.append("Please enter a valid CRN")
     
-    # Handle OAuth callback first
-    if not st.session_state.authenticated:
-        handle_auth_callback()
+    if not contact.strip():
+        errors.append("Contact number is required")
+    elif not re.match(r"^(97|98)\d{8}$", contact):
+        errors.append("Please enter a valid contact number (10 digits starting with 97 or 98)")
     
-    # Main app logic
-    if st.session_state.authenticated and st.session_state.user_info:
-        # User is authenticated - show profile
-        display_user_profile(st.session_state.user_info)
+    if not email.strip():
+        errors.append("Email is required")
+    elif not re.match(r"^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$", email):
+        errors.append("Please enter a valid email address")
+    
+    return errors
+
+def display_team_guidelines():
+    """Display team guidelines using Streamlit components"""
+    if st.session_state.selectedTeam:
+        team_info = data[st.session_state.selectedTeam]
         
-        # Additional features section
-        st.markdown("---")
-        st.subheader("📊 Session Information")
+        with st.container():
+            st.markdown("### 📋 " + st.session_state.selectedTeam)
+            
+            # Why Join section
+            with st.expander("✨ Why Join?", expanded=True):
+                st.write(team_info["Why Join"])
+            
+            # Key Responsibilities section
+            with st.expander("🎯 Key Responsibilities", expanded=True):
+                for responsibility in team_info["Key Responsibilities"]:
+                    st.write(f"• {responsibility}")
+            
+            # Why Avoid section
+            with st.expander("⚠️ Why Avoid?", expanded=True):
+                st.write(team_info["Why Avoid"])
+    else:
+        # Show circle info when no team is selected
+        with st.container():
+            st.markdown("### 🌟 Knowledge Sharing Circle")
+            
+            # About Us section
+            with st.expander("📖 About Us", expanded=True):
+                st.write(circle_data["circle_info"]["about"])
+            
+            # Mission section
+            with st.expander("🎯 Our Mission", expanded=True):
+                for mission_item in circle_data["circle_info"]["mission"]:
+                    st.write(f"• {mission_item}")
+            
+            # Vision section
+            with st.expander("🔮 Vision", expanded=True):
+                st.write(circle_data["circle_info"]["vision"])
+
+def individual_form():
+    """Individual form submission with comments field"""
+    with st.form("individual_form"):
+        st.markdown("### 👤 Individual Registration")
         
-        col1, col2, col3 = st.columns(3)
+        # Use columns for better mobile layout
+        col1, col2 = st.columns([1, 1])
         
         with col1:
-            st.metric("Authentication Status", "✅ Active")
+            name = st.text_input("👤 Full Name*", placeholder="Enter your full name")
+            crn = st.text_input("🆔 CRN*", placeholder="Enter your CRN")
         
         with col2:
-            if st.session_state.auth_time:
-                duration = int(time.time() - st.session_state.auth_time)
-                minutes = duration // 60
-                seconds = duration % 60
-                st.metric("Session Duration", f"{minutes}m {seconds}s")
+            contact = st.text_input("📱 Contact*", placeholder="97xxxxxxxx or 98xxxxxxxx")
+            email = st.text_input("📧 Email*", placeholder="your.email@domain.com")
         
-        with col3:
-            if st.button("🔄 Refresh Profile", help="Refresh your profile information"):
-                if st.session_state.access_token:
-                    with st.spinner("Refreshing..."):
-                        user_info = get_user_info(st.session_state.access_token)
-                        if user_info:
-                            st.session_state.user_info = user_info
-                            st.success("Profile refreshed successfully!")
-                            st.rerun()
-                        else:
-                            st.error("Failed to refresh profile. Please login again.")
+        # Comments field
+        comments = st.text_area(
+            "💬 Comments / Feedback / Suggestions (Optional)", 
+            placeholder="Share any thoughts, suggestions, or feedback you'd like us to know...",
+            help="This field is optional. Feel free to share any thoughts or suggestions!"
+        )
         
-        # Debug information (for development)
-        if st.checkbox("🐛 Show Debug Info", help="Toggle to show technical details"):
-            st.subheader("🔧 Debug Information")
-            debug_info = {
-                "redirect_uri": config.REDIRECT_URI,
-                "client_id": config.CLIENT_ID[:20] + "...",
-                "scopes": config.SCOPES,
-                "user_id": st.session_state.user_info.get('id'),
-                "email_verified": st.session_state.user_info.get('verified_email'),
-                "auth_timestamp": st.session_state.auth_time,
-                "session_keys": list(st.session_state.keys())
-            }
-            st.json(debug_info)
+        submit_button = st.form_submit_button("🚀 Submit Individual Application", use_container_width=True)
+        
+        if submit_button:
+            if not st.session_state.selectedTeam:
+                st.error("❌ Please select a team first!")
+                return
+                
+            errors = validate_form_data(name, crn, contact, email)
+            
+            if errors:
+                for error in errors:
+                    st.error(f"❌ {error}")
+            else:
+                response_data = {
+                    "submission_type": "individual",
+                    "timestamp": datetime.now().isoformat(),
+                    "name": name.strip(),
+                    "crn": crn,
+                    "contact": contact,
+                    "email": email.lower(),
+                    "selected_team": st.session_state.selectedTeam,
+                    "comments": comments.strip() if comments else ""
+                }
+                
+                save_response(INDIVIDUAL_RESPONSES_FILE, response_data)
+                st.success("🎉 Individual application submitted successfully!")
+                st.balloons()
+                st.session_state.form_submitted = True
+
+def team_form():
+    """Team form submission with comments field"""
+    with st.form("team_form"):
+        st.markdown("### 👥 Team Registration")
+        
+        team_name = st.text_input("🏆 Team Name*", placeholder="Enter your team name")
+        
+        st.markdown("#### Team Members (Max 5)")
+        
+        members_data = []
+        
+        for i in range(st.session_state.num_tabs):
+            st.markdown(f"**👤 Member {i+1}**")
+            
+            # Mobile-friendly layout
+            col1, col2 = st.columns([1, 1])
+            
+            with col1:
+                name = st.text_input("Full Name*", key=f"team_name_{i}", placeholder="First Last")
+                crn = st.text_input("CRN*", key=f"team_crn_{i}", placeholder="Your CRN")
+            
+            with col2:
+                contact = st.text_input("Contact*", key=f"team_contact_{i}", placeholder="97xxxxxxxx")
+                email = st.text_input("Email*", key=f"team_email_{i}", placeholder="email@domain.com")
+            
+            members_data.append({
+                "name": name,
+                "crn": crn,
+                "contact": contact,
+                "email": email
+            })
+            
+            if i < st.session_state.num_tabs - 1:
+                st.markdown("---")
+        
+        # Add member button
+        if st.session_state.num_tabs < 5:
+            if st.form_submit_button("➕ Add Team Member"):
+                add_tab()
+                st.rerun()
+        
+        # Comments field for team
+        comments = st.text_area(
+            "💬 Team Comments / Feedback / Suggestions (Optional)", 
+            placeholder="Share any thoughts, suggestions, or feedback about your team application...",
+            help="This field is optional. Feel free to share any thoughts or suggestions!"
+        )
+        
+        submit_button = st.form_submit_button("🚀 Submit Team Application", use_container_width=True)
+        
+        if submit_button:
+            if not team_name.strip():
+                st.error("❌ Please enter a team name")
+                return
+                
+            if not st.session_state.selectedTeam:
+                st.error("❌ Please select a team role first!")
+                return
+            
+            valid_members = []
+            team_errors = []
+            
+            for i, member in enumerate(members_data):
+                if any([member["name"], member["crn"], member["contact"], member["email"]]):
+                    errors = validate_form_data(
+                        member["name"], member["crn"], 
+                        member["contact"], member["email"]
+                    )
+                    
+                    if errors:
+                        team_errors.extend([f"Member {i+1}: {error}" for error in errors])
+                    else:
+                        valid_members.append({
+                            "name": member["name"].strip(),
+                            "crn": member["crn"],
+                            "contact": member["contact"],
+                            "email": member["email"].lower()
+                        })
+            
+            if not valid_members:
+                st.error("❌ Please add at least one team member")
+                return
+                
+            if team_errors:
+                for error in team_errors:
+                    st.error(f"❌ {error}")
+            else:
+                response_data = {
+                    "submission_type": "team",
+                    "timestamp": datetime.now().isoformat(),
+                    "team_name": team_name.strip(),
+                    "selected_team": st.session_state.selectedTeam,
+                    "members": valid_members,
+                    "member_count": len(valid_members),
+                    "comments": comments.strip() if comments else ""
+                }
+                
+                save_response(TEAM_RESPONSES_FILE, response_data)
+                st.success(f"🎉 Team application submitted successfully!")
+                st.success(f"Team: **{team_name}** with **{len(valid_members)} members**")
+                st.balloons()
+                st.session_state.form_submitted = True
+
+def main():
+    # Page configuration for wide mode and mobile optimization
+    st.set_page_config(
+        page_title="Knowledge Sharing Circle - Team Selection",
+        page_icon="🌟",
+        layout="wide",
+        initial_sidebar_state="auto",
+        menu_items={
+            'About': "Knowledge Sharing Circle - Building communities through shared learning",
+            'Report a bug': None,
+            'Get Help': 'mailto:support@knowledgesharingcircle.org'
+        }
+    )
     
-    else:
-        # User is not authenticated - show login
-        show_login_page()
+    # Add custom CSS
+    add_custom_css()
+    
+    # Display header
+    display_header()
+    
+    # Executive toggle button
+    display_exec_toggle_button()
+    
+    # Executive modal (shown on initial load)
+    display_executive_modal()
+    
+    # Important note
+    if not st.session_state.show_exec_modal:
+        st.info("""
+        📢 **Important Note:** Students currently in exams are also encouraged to fill this form. 
+        We can schedule meetings later as per your convenience and availability.
+        """)
+        
+        # Team selection
+        st.markdown("### 🎯 Select Your Team")
+        team = st.selectbox(
+            "Choose your preferred team*", 
+            [""] + list(data.keys()), 
+            key="team_selectbox",
+            help="Select the team you want to join. Guidelines will appear on the right."
+        )
+        
+        if team != st.session_state.selectedTeam:
+            st.session_state.selectedTeam = team
+        
+        if st.session_state.selectedTeam:
+            st.success(f"✅ Selected Team: **{st.session_state.selectedTeam}**")
+        else:
+            st.warning("⚠️ Please select a team to continue")
+        
+        st.markdown("---")
+        
+        # Create responsive columns - Guidelines LEFT, Forms RIGHT
+        if st.session_state.selectedTeam:  # Only show forms if team is selected
+            # For mobile, guidelines appear first (top), then forms
+            col1, col2 = st.columns([1, 2])
+            
+            with col1:
+                # Guidelines on the left (mobile: top)
+                display_team_guidelines()
+            
+            with col2:
+                # Registration type selection
+                selected = st.radio(
+                    '📝 Registration Type:', 
+                    options=['Individual', 'Team'], 
+                    horizontal=True,
+                    help="Individual: Solo application | Team: Group application (max 5 members)"
+                )
+                
+                # Display appropriate form
+                if selected == 'Individual':
+                    individual_form()
+                else:
+                    team_form()
+        
+        else:
+            # Show only circle info when no team is selected
+            display_team_guidelines()
 
 if __name__ == "__main__":
     main()

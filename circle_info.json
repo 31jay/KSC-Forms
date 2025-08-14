@@ -1,0 +1,51 @@
+{
+  "circle_info": {
+    "about": "The Knowledge Sharing Circle is a vibrant community dedicated to fostering learning, collaboration, and personal growth. We bring together passionate individuals to share knowledge, build skills, and create meaningful connections.",
+    "mission": [
+      "Share expertise and learn from peers",
+      "Develop professional and personal skills",
+      "Build lasting networks and friendships",
+      "Contribute to community growth and development",
+      "Foster innovation and creative thinking"
+    ],
+    "vision": "To be the leading platform for knowledge exchange and collaborative learning, empowering individuals to achieve their full potential while building a stronger, more connected community."
+  },
+  "executive_members": {
+    "President": {
+      "name": "Sarah Johnson",
+      "contact": "sarah.johnson@ksc.org",
+      "department": "Computer Science",
+      "role_description": "Leading the circle's strategic vision and overall operations"
+    },
+    "Vice President": {
+      "name": "Michael Chen",
+      "contact": "michael.chen@ksc.org", 
+      "department": "Business Administration",
+      "role_description": "Supporting leadership and managing day-to-day activities"
+    },
+    "Secretary": {
+      "name": "Emily Rodriguez",
+      "contact": "emily.rodriguez@ksc.org",
+      "department": "Communications",
+      "role_description": "Managing documentation and internal communications"
+    },
+    "Treasurer": {
+      "name": "David Kim",
+      "contact": "david.kim@ksc.org",
+      "department": "Finance",
+      "role_description": "Overseeing financial operations and budget management"
+    },
+    "Technical Lead": {
+      "name": "Alex Thompson",
+      "contact": "alex.thompson@ksc.org",
+      "department": "Information Technology",
+      "role_description": "Managing technical infrastructure and digital solutions"
+    },
+    "Events Coordinator": {
+      "name": "Lisa Wang",
+      "contact": "lisa.wang@ksc.org",
+      "department": "Event Management",
+      "role_description": "Planning and executing all circle events and activities"
+    }
+  }
+}
