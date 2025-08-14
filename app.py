@@ -385,7 +385,7 @@ def team_form():
             col1, col2 = st.columns([1, 1])
             
             with col1:
-                name = st.text_input("Full Name*", key=f"team_name_{i}", placeholder="First Last")
+                name = st.text_input("Full Name*", key=f"team_name_{i}", placeholder="Full Name")
                 crn = st.text_input("CRN*", key=f"team_crn_{i}", placeholder="Your CRN")
             
             with col2:
