@@ -221,7 +221,7 @@ def display_exec_toggle_button():
     """Display centered button to show executive info"""
     if not st.session_state.show_exec_modal:
         st.markdown('<div class="center-btn-container">', unsafe_allow_html=True)
-        if st.button("👥 View Executive Members", key="show_exec_btn", help="View Executive Members"):
+        if st.button("👥 View Executive Members", key="show_exec_btn", help="View the info about Executive Members",use_container_width=True):
             st.session_state.show_exec_modal = True
             st.rerun()
         st.markdown('</div>', unsafe_allow_html=True)
