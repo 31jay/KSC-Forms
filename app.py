@@ -4,6 +4,7 @@ import re
 import os
 import time
 from datetime import datetime
+from email_service import send_confirmation_email
 
 FILE = "team_guidelines.json"
 INDIVIDUAL_RESPONSES_FILE = "individual_responses.json"
@@ -147,6 +148,16 @@ def add_custom_css():
         margin: 1rem 0;
     }
     
+    /* Delete button styling */
+    .delete-button {
+        background-color: #dc3545;
+        color: white;
+        border: none;
+        padding: 0.25rem 0.5rem;
+        border-radius: 4px;
+        font-size: 0.8rem;
+    }
+    
     /* Mobile responsive */
     @media (max-width: 768px) {
         .main-title {
@@ -251,6 +262,10 @@ def add_tab():
     if st.session_state.num_tabs < 5:  # Max 5 members
         st.session_state.num_tabs += 1
 
+def remove_tab():
+    if st.session_state.num_tabs > 1:  # Minimum 1 member
+        st.session_state.num_tabs -= 1
+
 def validate_form_data(name, crn, contact, email):
     """Validate form inputs and return errors"""
     errors = []
@@ -276,6 +291,15 @@ def validate_form_data(name, crn, contact, email):
         errors.append("Please enter a valid email address")
     
     return errors
+
+def has_any_field_filled(member_data):
+    """Check if any field in member data is filled"""
+    return any([
+        member_data.get("name", "").strip(),
+        member_data.get("crn", "").strip(),
+        member_data.get("contact", "").strip(),
+        member_data.get("email", "").strip()
+    ])
 
 def display_team_guidelines():
     """Display team guidelines using Streamlit components"""
@@ -363,12 +387,31 @@ def individual_form():
                 }
                 
                 save_response(INDIVIDUAL_RESPONSES_FILE, response_data)
-                st.success("🎉 Individual application submitted successfully!")
+                
+                # Send confirmation email
+                try:
+                    email_sent = send_confirmation_email(
+                        recipient_email=email.lower(),
+                        recipient_name=name.strip(),
+                        team_name=st.session_state.selectedTeam,
+                        submission_type="Individual"
+                    )
+                    if email_sent:
+                        st.success("🎉 Individual application submitted successfully!")
+                        st.success("📧 Confirmation email sent to your registered email address!")
+                    else:
+                        st.success("🎉 Individual application submitted successfully!")
+                        st.warning("⚠️ Application saved but confirmation email could not be sent.")
+                except Exception as e:
+                    st.success("🎉 Individual application submitted successfully!")
+                    st.warning("⚠️ Application saved but confirmation email could not be sent.")
+                    st.error(f"Email error: {str(e)}")
+                
                 st.balloons()
                 st.session_state.form_submitted = True
 
 def team_form():
-    """Team form submission with comments field"""
+    """Team form submission with comments field and delete member functionality"""
     with st.form("team_form"):
         st.markdown("### 👥 Team Registration")
         
@@ -402,11 +445,22 @@ def team_form():
             if i < st.session_state.num_tabs - 1:
                 st.markdown("---")
         
-        # Add member button
-        if st.session_state.num_tabs < 5:
-            if st.form_submit_button("➕ Add Team Member", use_container_width=True):
-                add_tab()
-                st.rerun()
+        # Team member control buttons
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            if st.session_state.num_tabs < 5:
+                if st.form_submit_button("➕ Add Team Member", use_container_width=True):
+                    add_tab()
+                    st.rerun()
+        
+        with col2:
+            if st.session_state.num_tabs > 1:
+                if st.form_submit_button("🗑️ Remove Last Member", use_container_width=True):
+                    remove_tab()
+                    st.rerun()
+        
+        st.markdown("---")
         
         # Comments field for team
         comments = st.text_area(
@@ -426,11 +480,15 @@ def team_form():
                 st.error("❌ Please select a team role first!")
                 return
             
+            # Check for members with partial data
             valid_members = []
             team_errors = []
+            members_with_partial_data = []
             
             for i, member in enumerate(members_data):
-                if any([member["name"], member["crn"], member["contact"], member["email"]]):
+                has_data = has_any_field_filled(member)
+                
+                if has_data:
                     errors = validate_form_data(
                         member["name"], member["crn"], 
                         member["contact"], member["email"]
@@ -438,6 +496,7 @@ def team_form():
                     
                     if errors:
                         team_errors.extend([f"Member {i+1}: {error}" for error in errors])
+                        members_with_partial_data.append(i+1)
                     else:
                         valid_members.append({
                             "name": member["name"].strip(),
@@ -446,13 +505,18 @@ def team_form():
                             "email": member["email"].lower()
                         })
             
-            if not valid_members:
-                st.error("❌ Please add at least one team member")
+            # Provide specific error messages
+            if not valid_members and not members_with_partial_data:
+                st.error("❌ Please add at least one complete team member with all required fields filled")
+                return
+            elif not valid_members and members_with_partial_data:
+                st.error("❌ Please complete all required fields for the team members you've started filling")
                 return
                 
             if team_errors:
+                st.error("❌ Please fix the following errors:")
                 for error in team_errors:
-                    st.error(f"❌ {error}")
+                    st.error(f"   • {error}")
             else:
                 response_data = {
                     "submission_type": "team",
@@ -465,8 +529,39 @@ def team_form():
                 }
                 
                 save_response(TEAM_RESPONSES_FILE, response_data)
+                
+                # Send confirmation emails to all team members
+                email_results = []
+                for member in valid_members:
+                    try:
+                        email_sent = send_confirmation_email(
+                            recipient_email=member["email"],
+                            recipient_name=member["name"],
+                            team_name=st.session_state.selectedTeam,
+                            submission_type="Team",
+                            team_details={
+                                "team_name": team_name.strip(),
+                                "member_count": len(valid_members)
+                            }
+                        )
+                        email_results.append(email_sent)
+                    except Exception as e:
+                        email_results.append(False)
+                        st.error(f"Email error for {member['name']}: {str(e)}")
+                
                 st.success(f"🎉 Team application submitted successfully!")
                 st.success(f"Team: **{team_name}** with **{len(valid_members)} members**")
+                
+                # Email status feedback
+                successful_emails = sum(email_results)
+                if successful_emails == len(valid_members):
+                    st.success("📧 Confirmation emails sent to all team members!")
+                elif successful_emails > 0:
+                    st.success(f"📧 Confirmation emails sent to {successful_emails} out of {len(valid_members)} team members!")
+                    st.warning("⚠️ Some confirmation emails could not be sent.")
+                else:
+                    st.warning("⚠️ Team application saved but confirmation emails could not be sent.")
+                
                 st.balloons()
                 st.session_state.form_submitted = True
 
