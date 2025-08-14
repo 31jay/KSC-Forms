@@ -191,7 +191,7 @@ def display_executive_modal():
             # Close button at top right
             col1, col2, col3 = st.columns([4, 1, 1])
             with col3:
-                if st.button("✖️ Close", key="close_exec_modal"):
+                if st.button("✖️ Close", key="close_exec_modal", use_container_width=True):
                     st.session_state.show_exec_modal = False
                     st.rerun()
             
