@@ -605,13 +605,13 @@ def main():
         We can schedule meetings later as per your convenience and availability.
         """)
         
-        # Test Google Sheets connection (optional, for debugging)
-        if st.sidebar.button("Test Google Sheets Connection"):
-            success, message = test_sheets_connection()
-            if success:
-                st.sidebar.success(message)
-            else:
-                st.sidebar.error(message)
+        # # Test Google Sheets connection (optional, for debugging)
+        # if st.sidebar.button("Test Google Sheets Connection"):
+        #     success, message = test_sheets_connection()
+        #     if success:
+        #         st.sidebar.success(message)
+        #     else:
+        #         st.sidebar.error(message)
         
         # Team selection
         st.markdown("### 🎯 Select Your Team")
