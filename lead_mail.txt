@@ -1,0 +1,35 @@
+Dear {RECIPIENT_NAME},
+
+🎉 Congratulations! Your {SUBMISSION_TYPE} application for the Knowledge Sharing Circle has been successfully submitted.
+
+Application Details:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📋 Application Type: {SUBMISSION_TYPE}
+🎯 Selected Team: {TEAM_NAME}
+⏰ Submission Time: {TIMESTAMP}
+{TEAM_DETAILS}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🌟 What's Next?
+Our team will review your application and get back to you soon with further details about:
+• Team orientation sessions
+• Meeting schedules
+• Project assignments
+• Community guidelines
+
+📞 Need Help?
+If you have any questions or concerns, feel free to reach out to us:
+• Email: ksc@gmail.com
+• Contact: Knowledge Sharing Circle at Khwopa Engineering College
+
+🚀 Welcome to the Knowledge Sharing Circle family!
+We're excited to have you on board and look forward to an amazing journey of learning and growth together.
+
+Best regards,
+Knowledge Sharing Circle Team
+Khwopa Engineering College
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📧 This is an automated confirmation email. Please do not reply to this email.
+If you need assistance, contact us at ksc@gmail.com
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

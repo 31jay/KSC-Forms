@@ -1,0 +1,46 @@
+Dear {RECIPIENT_NAME},
+
+👥 You have been added to a team for Knowledge Sharing Circle registration!
+
+Team Invitation Details:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🤝 Added by: {TEAM_LEAD_NAME}
+🏆 Team Name: {TEAM_NAME_DETAILS}
+🎯 Selected Role: {TEAM_NAME}
+⏰ Registration Time: {TIMESTAMP}
+
+{MEMBER_DETAILS}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+⚠️ Important Notice:
+If this team registration was NOT done with your consent, please immediately contact:
+• Email: ksc@gmail.com
+• Contact: Knowledge Sharing Circle at Khwopa Engineering College
+
+🔍 Please verify your details above. If there are any errors in your information, please contact us immediately.
+
+✅ With Your Consent:
+If you agree to be part of this team, we will proceed with your application. Our team will review the application and contact you with further details about:
+• Team orientation sessions
+• Meeting schedules
+• Project assignments
+• Community guidelines
+
+❌ Without Your Consent:
+If you did not authorize this registration or do not wish to participate, please inform us immediately at ksc@gmail.com so we can remove your details from our records.
+
+📞 Need Help or Have Questions?
+Feel free to reach out to us at:
+• Email: ksc@gmail.com
+• Contact: Knowledge Sharing Circle at Khwopa Engineering College
+
+Thank you for your attention to this matter.
+
+Best regards,
+Knowledge Sharing Circle Team
+Khwopa Engineering College
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📧 This is an automated notification email. Please do not reply to this email.
+For any concerns or questions, contact us at ksc@gmail.com
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
