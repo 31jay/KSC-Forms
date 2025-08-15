@@ -5,10 +5,9 @@ import os
 import time
 from datetime import datetime
 from email_service import send_confirmation_email
+from sheets_service import save_individual_response, save_team_response, test_sheets_connection
 
 FILE = "team_guidelines.json"
-INDIVIDUAL_RESPONSES_FILE = "individual_responses.json"
-TEAM_RESPONSES_FILE = "team_responses.json"
 CIRCLE_INFO_FILE = "circle_info.json"
 
 # Load team guidelines
@@ -158,6 +157,18 @@ def add_custom_css():
         font-size: 0.8rem;
     }
     
+    /* Team Lead styling */
+    .team-lead-badge {
+        background-color: #28a745;
+        color: white;
+        padding: 0.2rem 0.5rem;
+        border-radius: 15px;
+        font-size: 0.8rem;
+        font-weight: bold;
+        display: inline-block;
+        margin-left: 0.5rem;
+    }
+    
     /* Mobile responsive */
     @media (max-width: 768px) {
         .main-title {
@@ -236,35 +247,6 @@ def display_exec_toggle_button():
             st.session_state.show_exec_modal = True
             st.rerun()
         st.markdown('</div>', unsafe_allow_html=True)
-
-def load_responses(file_path):
-    """Load existing responses from JSON file"""
-    if os.path.exists(file_path):
-        try:
-            with open(file_path, 'r') as f:
-                data = json.load(f)
-                # Ensure we always return a list
-                if isinstance(data, dict):
-                    return []  # Reset if corrupted
-                return data if isinstance(data, list) else []
-        except:
-            return []
-    return []
-
-def save_response(file_path, response_data):
-    """Save response to JSON file"""
-    responses = load_responses(file_path)
-    responses.append(response_data)
-    with open(file_path, 'w') as f:
-        json.dump(responses, f, indent=2)
-
-def add_tab():
-    if st.session_state.num_tabs < 5:  # Max 5 members
-        st.session_state.num_tabs += 1
-
-def remove_tab():
-    if st.session_state.num_tabs > 1:  # Minimum 1 member
-        st.session_state.num_tabs -= 1
 
 def validate_form_data(name, crn, contact, email):
     """Validate form inputs and return errors"""
@@ -366,14 +348,14 @@ def individual_form():
         
         if submit_button:
             if not st.session_state.selectedTeam:
-                st.error("❌ Please select a team first!")
+                st.error("⚠ Please select a team first!")
                 return
                 
             errors = validate_form_data(name, crn, contact, email)
             
             if errors:
                 for error in errors:
-                    st.error(f"❌ {error}")
+                    st.error(f"⚠ {error}")
             else:
                 response_data = {
                     "submission_type": "individual",
@@ -386,29 +368,33 @@ def individual_form():
                     "comments": comments.strip() if comments else ""
                 }
                 
-                save_response(INDIVIDUAL_RESPONSES_FILE, response_data)
+                # Save to Google Sheets
+                sheets_success = save_individual_response(response_data)
                 
-                # Send confirmation email
-                try:
-                    email_sent = send_confirmation_email(
-                        recipient_email=email.lower(),
-                        recipient_name=name.strip(),
-                        team_name=st.session_state.selectedTeam,
-                        submission_type="Individual"
-                    )
-                    if email_sent:
-                        st.success("🎉 Individual application submitted successfully!")
-                        st.success("📧 Confirmation email sent to your registered email address!")
-                    else:
+                if sheets_success:
+                    # Send confirmation email
+                    try:
+                        email_sent = send_confirmation_email(
+                            recipient_email=email.lower(),
+                            recipient_name=name.strip(),
+                            team_name=st.session_state.selectedTeam,
+                            submission_type="Individual"
+                        )
+                        if email_sent:
+                            st.success("🎉 Individual application submitted successfully!")
+                            st.success("📧 Confirmation email sent to your registered email address!")
+                        else:
+                            st.success("🎉 Individual application submitted successfully!")
+                            st.warning("⚠️ Application saved but confirmation email could not be sent.")
+                    except Exception as e:
                         st.success("🎉 Individual application submitted successfully!")
                         st.warning("⚠️ Application saved but confirmation email could not be sent.")
-                except Exception as e:
-                    st.success("🎉 Individual application submitted successfully!")
-                    st.warning("⚠️ Application saved but confirmation email could not be sent.")
-                    st.error(f"Email error: {str(e)}")
-                
-                st.balloons()
-                st.session_state.form_submitted = True
+                        st.error(f"Email error: {str(e)}")
+                    
+                    st.balloons()
+                    st.session_state.form_submitted = True
+                else:
+                    st.error("❌ Failed to save application. Please try again.")
 
 def team_form():
     """Team form submission with comments field and delete member functionality"""
@@ -422,7 +408,11 @@ def team_form():
         members_data = []
         
         for i in range(st.session_state.num_tabs):
-            st.markdown(f"**👤 Member {i+1}**")
+            # Display Team Lead badge for first member
+            if i == 0:
+                st.markdown("**👤 Team Lead** <span class='team-lead-badge'>LEAD</span>", unsafe_allow_html=True)
+            else:
+                st.markdown(f"**👤 Member {i+1}**")
             
             # Mobile-friendly layout
             col1, col2 = st.columns([1, 1])
@@ -473,11 +463,11 @@ def team_form():
         
         if submit_button:
             if not team_name.strip():
-                st.error("❌ Please enter a team name")
+                st.error("⚠ Please enter a team name")
                 return
                 
             if not st.session_state.selectedTeam:
-                st.error("❌ Please select a team role first!")
+                st.error("⚠ Please select a team role first!")
                 return
             
             # Check for members with partial data
@@ -495,7 +485,8 @@ def team_form():
                     )
                     
                     if errors:
-                        team_errors.extend([f"Member {i+1}: {error}" for error in errors])
+                        member_title = "Team Lead" if i == 0 else f"Member {i+1}"
+                        team_errors.extend([f"{member_title}: {error}" for error in errors])
                         members_with_partial_data.append(i+1)
                     else:
                         valid_members.append({
@@ -507,14 +498,14 @@ def team_form():
             
             # Provide specific error messages
             if not valid_members and not members_with_partial_data:
-                st.error("❌ Please add at least one complete team member with all required fields filled")
+                st.error("⚠ Please add at least one complete team member with all required fields filled")
                 return
             elif not valid_members and members_with_partial_data:
-                st.error("❌ Please complete all required fields for the team members you've started filling")
+                st.error("⚠ Please complete all required fields for the team members you've started filling")
                 return
                 
             if team_errors:
-                st.error("❌ Please fix the following errors:")
+                st.error("⚠ Please fix the following errors:")
                 for error in team_errors:
                     st.error(f"   • {error}")
             else:
@@ -528,42 +519,58 @@ def team_form():
                     "comments": comments.strip() if comments else ""
                 }
                 
-                save_response(TEAM_RESPONSES_FILE, response_data)
+                # Save to Google Sheets
+                sheets_success = save_team_response(response_data)
                 
-                # Send confirmation emails to all team members
-                email_results = []
-                for member in valid_members:
-                    try:
-                        email_sent = send_confirmation_email(
-                            recipient_email=member["email"],
-                            recipient_name=member["name"],
-                            team_name=st.session_state.selectedTeam,
-                            submission_type="Team",
-                            team_details={
-                                "team_name": team_name.strip(),
-                                "member_count": len(valid_members)
-                            }
-                        )
-                        email_results.append(email_sent)
-                    except Exception as e:
-                        email_results.append(False)
-                        st.error(f"Email error for {member['name']}: {str(e)}")
-                
-                st.success(f"🎉 Team application submitted successfully!")
-                st.success(f"Team: **{team_name}** with **{len(valid_members)} members**")
-                
-                # Email status feedback
-                successful_emails = sum(email_results)
-                if successful_emails == len(valid_members):
-                    st.success("📧 Confirmation emails sent to all team members!")
-                elif successful_emails > 0:
-                    st.success(f"📧 Confirmation emails sent to {successful_emails} out of {len(valid_members)} team members!")
-                    st.warning("⚠️ Some confirmation emails could not be sent.")
+                if sheets_success:
+                    # Send confirmation emails to all team members
+                    email_results = []
+                    for i, member in enumerate(valid_members):
+                        try:
+                            # Use different email templates for team lead and members
+                            email_type = "team_lead" if i == 0 else "team_member"
+                            email_sent = send_confirmation_email(
+                                recipient_email=member["email"],
+                                recipient_name=member["name"],
+                                team_name=st.session_state.selectedTeam,
+                                submission_type="Team",
+                                team_details={
+                                    "team_name": team_name.strip(),
+                                    "member_count": len(valid_members),
+                                    "team_lead_name": valid_members[0]["name"]
+                                },
+                                email_type=email_type
+                            )
+                            email_results.append(email_sent)
+                        except Exception as e:
+                            email_results.append(False)
+                            st.error(f"Email error for {member['name']}: {str(e)}")
+                    
+                    st.success(f"🎉 Team application submitted successfully!")
+                    st.success(f"Team: **{team_name}** with **{len(valid_members)} members**")
+                    
+                    # Email status feedback
+                    successful_emails = sum(email_results)
+                    if successful_emails == len(valid_members):
+                        st.success("📧 Confirmation emails sent to all team members!")
+                    elif successful_emails > 0:
+                        st.success(f"📧 Confirmation emails sent to {successful_emails} out of {len(valid_members)} team members!")
+                        st.warning("⚠️ Some confirmation emails could not be sent.")
+                    else:
+                        st.warning("⚠️ Team application saved but confirmation emails could not be sent.")
+                    
+                    st.balloons()
+                    st.session_state.form_submitted = True
                 else:
-                    st.warning("⚠️ Team application saved but confirmation emails could not be sent.")
-                
-                st.balloons()
-                st.session_state.form_submitted = True
+                    st.error("❌ Failed to save team application. Please try again.")
+
+def add_tab():
+    if st.session_state.num_tabs < 5:  # Max 5 members
+        st.session_state.num_tabs += 1
+
+def remove_tab():
+    if st.session_state.num_tabs > 1:  # Minimum 1 member
+        st.session_state.num_tabs -= 1
 
 def main():
     # Page configuration for wide mode and mobile optimization
@@ -597,6 +604,14 @@ def main():
         📢 **Important Note:** Students currently in exams are also encouraged to fill this form. 
         We can schedule meetings later as per your convenience and availability.
         """)
+        
+        # Test Google Sheets connection (optional, for debugging)
+        if st.sidebar.button("Test Google Sheets Connection"):
+            success, message = test_sheets_connection()
+            if success:
+                st.sidebar.success(message)
+            else:
+                st.sidebar.error(message)
         
         # Team selection
         st.markdown("### 🎯 Select Your Team")

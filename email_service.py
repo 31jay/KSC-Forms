@@ -10,16 +10,16 @@ from datetime import datetime
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-def load_email_template():
+def load_email_template(template_name="lead_mail.txt"):
     """Load email template from file"""
     try:
-        with open('mail_template.txt', 'r', encoding='utf-8') as f:
+        with open(template_name, 'r', encoding='utf-8') as f:
             return f.read()
     except FileNotFoundError:
-        logger.error("Email template file not found")
+        logger.error(f"Email template file {template_name} not found")
         return None
     except Exception as e:
-        logger.error(f"Error loading email template: {str(e)}")
+        logger.error(f"Error loading email template {template_name}: {str(e)}")
         return None
 
 def get_smtp_config():
@@ -41,34 +41,61 @@ def get_smtp_config():
         logger.error(f"Error getting SMTP configuration: {str(e)}")
         return None
 
-def create_email_content(recipient_name, team_name, submission_type, team_details=None):
-    """Create personalized email content"""
-    template = load_email_template()
+def create_email_content(recipient_name, team_name, submission_type, team_details=None, email_type="general"):
+    """Create personalized email content based on email type"""
+    
+    # Determine which template to use
+    if email_type == "team_member":
+        template = load_email_template("members_mail.txt")
+    else:
+        template = load_email_template("lead_mail.txt")
+    
     if not template:
         return None
     
     # Get current timestamp
     current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     
-    # Replace placeholders in template
+    # Replace common placeholders
     content = template.replace("{RECIPIENT_NAME}", recipient_name)
     content = content.replace("{TEAM_NAME}", team_name)
     content = content.replace("{SUBMISSION_TYPE}", submission_type)
     content = content.replace("{TIMESTAMP}", current_time)
     
-    # Add team-specific details if provided
-    if team_details and submission_type == "Team":
-        team_info = f"""
-        Team Name: {team_details['team_name']}
-        Team Members: {team_details['member_count']} members
-        """
-        content = content.replace("{TEAM_DETAILS}", team_info)
+    # Handle team-specific placeholders
+    if team_details:
+        if email_type == "team_member":
+            # For team member template (template2)
+            team_lead_name = team_details.get('team_lead_name', 'Team Lead')
+            content = content.replace("{TEAM_LEAD_NAME}", team_lead_name)
+            content = content.replace("{TEAM_NAME_DETAILS}", team_details.get('team_name', 'Your Team'))
+            
+            # Add member details section
+            member_details = f"""
+Your Details:
+- Name: {recipient_name}
+- Team: {team_details.get('team_name', 'N/A')}
+- Selected Role: {team_name}
+- Team Members: {team_details.get('member_count', 1)} members
+            """
+            content = content.replace("{MEMBER_DETAILS}", member_details)
+        else:
+            # For general template (template1) - team lead
+            team_info = f"""
+Team Name: {team_details['team_name']}
+Team Members: {team_details['member_count']} members
+            """
+            content = content.replace("{TEAM_DETAILS}", team_info)
     else:
+        # Remove team-specific placeholders for individual applications
         content = content.replace("{TEAM_DETAILS}", "")
+        content = content.replace("{TEAM_LEAD_NAME}", "")
+        content = content.replace("{TEAM_NAME_DETAILS}", "")
+        content = content.replace("{MEMBER_DETAILS}", "")
     
     return content
 
-def send_confirmation_email(recipient_email, recipient_name, team_name, submission_type, team_details=None):
+def send_confirmation_email(recipient_email, recipient_name, team_name, submission_type, team_details=None, email_type="general"):
     """Send confirmation email to the recipient"""
     try:
         # Get SMTP configuration
@@ -78,7 +105,9 @@ def send_confirmation_email(recipient_email, recipient_name, team_name, submissi
             return False
         
         # Create email content
-        email_content = create_email_content(recipient_name, team_name, submission_type, team_details)
+        email_content = create_email_content(
+            recipient_name, team_name, submission_type, team_details, email_type
+        )
         if not email_content:
             logger.error("Failed to create email content")
             return False
@@ -88,9 +117,12 @@ def send_confirmation_email(recipient_email, recipient_name, team_name, submissi
         msg['From'] = formataddr((smtp_config['sender_name'], smtp_config['sender_email']))
         msg['To'] = recipient_email
         
-        # Subject line based on submission type
+        # Subject line based on submission type and email type
         if submission_type == "Team":
-            subject = f"Team Application Confirmed - {team_name} | Knowledge Sharing Circle"
+            if email_type == "team_member":
+                subject = f"Team Invitation - {team_name} | Knowledge Sharing Circle"
+            else:
+                subject = f"Team Application Confirmed - {team_name} | Knowledge Sharing Circle"
         else:
             subject = f"Application Confirmed - {team_name} | Knowledge Sharing Circle"
         
@@ -107,7 +139,7 @@ def send_confirmation_email(recipient_email, recipient_name, team_name, submissi
             text = msg.as_string()
             server.sendmail(smtp_config['sender_email'], recipient_email, text)
         
-        logger.info(f"Confirmation email sent successfully to {recipient_email}")
+        logger.info(f"Confirmation email sent successfully to {recipient_email} (type: {email_type})")
         return True
         
     except smtplib.SMTPAuthenticationError:
