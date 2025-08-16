@@ -2,7 +2,7 @@ import streamlit as st
 
 def add_custom_css():
     """Add custom CSS for better mobile experience and clean styling"""
-    st.markdown("""
+    st.write("""
     <style>
     /* Main container styling */
     .main-container {
@@ -169,7 +169,7 @@ def add_custom_css():
 
 def display_header():
     """Display the main header with gradient background"""
-    st.markdown("""
+    st.write("""
     <div class="main-container">
         <div class="main-header">
             <div class="main-title">🌟 Knowledge Sharing Circle</div>
@@ -188,11 +188,11 @@ def display_executive_modal():
                     st.session_state.show_exec_modal = False
                     st.rerun()
             
-            # st.markdown("### 👥 Meet Our Executive Team")
-            # st.markdown("---")
+            st.write("<h3>👥 Meet Our Executive Team</h3>", unsafe_allow_html=True)
+            st.write("<hr>", unsafe_allow_html=True)
             
             try:
-                st.image("assets/executives.png")
+                st.image("assets/executives.png", use_column_width=True)
             except FileNotFoundError:
                 st.error("⚠️ Image file 'assets/executives.png' not found. Please ensure the file exists.")
             except Exception as e:
@@ -201,11 +201,11 @@ def display_executive_modal():
 def display_exec_toggle_button():
     """Display centered button to show executive info"""
     if not st.session_state.show_exec_modal:
-        st.markdown('<div class="center-btn-container">', unsafe_allow_html=True)
+        st.write('<div class="center-btn-container">', unsafe_allow_html=True)
         if st.button("👥 View Executive Members", key="show_exec_btn", help="View the info about Executive Members", use_container_width=True):
             st.session_state.show_exec_modal = True
             st.rerun()
-        st.markdown('</div>', unsafe_allow_html=True)
+        st.write('</div>', unsafe_allow_html=True)
 
 def display_team_guidelines():
     """Display team guidelines using Streamlit components"""
@@ -213,7 +213,7 @@ def display_team_guidelines():
         team_info = st.session_state.data.get(st.session_state.selectedTeam, {})
         
         with st.container():
-            st.markdown("### 📋 " + st.session_state.selectedTeam)
+            st.write(f"<h3>📋 {st.session_state.selectedTeam}</h3>", unsafe_allow_html=True)
             
             with st.expander("✨ Why Join?", expanded=True):
                 st.write(team_info.get("Why Join", ""))
@@ -226,7 +226,7 @@ def display_team_guidelines():
                 st.write(team_info.get("Why Avoid", ""))
     else:
         with st.container():
-            st.markdown("### 🌟 Knowledge Sharing Circle")
+            st.write("<h3>🌟 Knowledge Sharing Circle</h3>", unsafe_allow_html=True)
             
             with st.expander("📖 About Us", expanded=True):
                 st.write(st.session_state.circle_data.get("circle_info", {}).get("about", ""))
