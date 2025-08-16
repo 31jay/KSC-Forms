@@ -178,35 +178,6 @@ def display_header():
     </div>
     """, unsafe_allow_html=True)
 
-def display_executive_modal():
-    """Display executive members modal with an image using Streamlit components"""
-    if st.session_state.show_exec_modal:
-        with st.container():
-            col1, col2, col3 = st.columns([4, 1, 1])
-            with col3:
-                if st.button("✖️ Close", key="close_exec_modal", use_container_width=True):
-                    st.session_state.show_exec_modal = False
-                    st.rerun()
-            
-            # st.write("<h3>👥 Meet Our Executive Team</h3>", unsafe_allow_html=True)
-            # st.write("<hr>", unsafe_allow_html=True)
-            
-            try:
-                st.image("assets/executives.png", use_container_width=True)
-            except FileNotFoundError:
-                st.error("⚠️ Image file 'assets/executives.png' not found. Please ensure the file exists.")
-            except Exception as e:
-                st.error(f"⚠️ Error loading image: {str(e)}")
-
-def display_exec_toggle_button():
-    """Display centered button to show executive info"""
-    if not st.session_state.show_exec_modal:
-        st.write('<div class="center-btn-container">', unsafe_allow_html=True)
-        if st.button("👥 View Executive Members", key="show_exec_btn", help="View the info about Executive Members", use_container_width=True):
-            st.session_state.show_exec_modal = True
-            st.rerun()
-        st.write('</div>', unsafe_allow_html=True)
-
 def display_team_guidelines():
     """Display team guidelines using Streamlit components"""
     if st.session_state.selectedTeam:

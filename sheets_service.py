@@ -181,6 +181,33 @@ class SheetsService:
             logger.error(f"Error saving team response: {str(e)}")
             return False
     
+    def check_email_exists(self, email: str) -> bool:
+        """Check if the email exists in individual or team responses"""
+        try:
+            if not self.client:
+                logger.error("Google Sheets client not initialized")
+                return False
+            
+            # Check individual sheet
+            sheet = self.client.open_by_key(INDIVIDUAL_SHEET_ID)
+            worksheet = sheet.get_worksheet(0)
+            emails = worksheet.col_values(5)[1:]  # Column E, skip header
+            if email.lower() in [e.lower() for e in emails]:
+                return True
+            
+            # Check team sheet
+            sheet = self.client.open_by_key(TEAM_SHEET_ID)
+            worksheet = sheet.get_worksheet(0)
+            emails = worksheet.col_values(9)[1:]  # Column I, skip header
+            if email.lower() in [e.lower() for e in emails]:
+                return True
+            
+            return False
+            
+        except Exception as e:
+            logger.error(f"Error checking email existence: {str(e)}")
+            return False
+    
     def test_connection(self) -> tuple[bool, str]:
         """Test the connection to Google Sheets"""
         try:
@@ -209,6 +236,10 @@ def save_individual_response(response_data: Dict[str, Any]) -> bool:
 def save_team_response(response_data: Dict[str, Any]) -> bool:
     """Convenience function to save team response"""
     return sheets_service.save_team_response(response_data)
+
+def check_email_exists(email: str) -> bool:
+    """Convenience function to check if email exists"""
+    return sheets_service.check_email_exists(email)
 
 def test_sheets_connection() -> tuple[bool, str]:
     """Convenience function to test connection"""

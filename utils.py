@@ -7,8 +7,6 @@ def initialize_session_state():
         st.session_state.num_tabs = 1
     if "selectedTeam" not in st.session_state:
         st.session_state.selectedTeam = None
-    if "show_exec_modal" not in st.session_state:
-        st.session_state.show_exec_modal = True
     if "form_submitted" not in st.session_state:
         st.session_state.form_submitted = False
     if "data" not in st.session_state:
