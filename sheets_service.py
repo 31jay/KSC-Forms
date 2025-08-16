@@ -204,12 +204,10 @@ sheets_service = SheetsService()
 
 def save_individual_response(response_data: Dict[str, Any]) -> bool:
     """Convenience function to save individual response"""
-    st.success("Individual response saved successfully!")
     return sheets_service.save_individual_response(response_data)
 
 def save_team_response(response_data: Dict[str, Any]) -> bool:
     """Convenience function to save team response"""
-    st.success("Team response saved successfully!")
     return sheets_service.save_team_response(response_data)
 
 def test_sheets_connection() -> tuple[bool, str]:
