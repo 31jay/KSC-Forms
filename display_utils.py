@@ -192,7 +192,7 @@ def display_executive_modal():
             st.write("<hr>", unsafe_allow_html=True)
             
             try:
-                st.image("assets/executives.png", use_column_width=True)
+                st.image("assets/executives.png", use_container_width=True)
             except FileNotFoundError:
                 st.error("⚠️ Image file 'assets/executives.png' not found. Please ensure the file exists.")
             except Exception as e:
