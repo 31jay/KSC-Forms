@@ -188,8 +188,8 @@ def display_executive_modal():
                     st.session_state.show_exec_modal = False
                     st.rerun()
             
-            st.write("<h3>👥 Meet Our Executive Team</h3>", unsafe_allow_html=True)
-            st.write("<hr>", unsafe_allow_html=True)
+            # st.write("<h3>👥 Meet Our Executive Team</h3>", unsafe_allow_html=True)
+            # st.write("<hr>", unsafe_allow_html=True)
             
             try:
                 st.image("assets/executives.png", use_container_width=True)
